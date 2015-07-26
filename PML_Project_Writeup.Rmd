@@ -4,10 +4,13 @@ author: "Eugene Fallon"
 date: "July 26, 2015"
 output: html_document
 ---
+# Background
 
-Some initial setup for the analysis and prediction
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
 
-```{r}
+## Some initial setup for the analysis and prediction
+
+```{r,message=FALSE,warning=FALSE}
 ## Setup 
 library(caret)
 library(dplyr)
@@ -17,9 +20,10 @@ testurl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
 
 ```
 
-Load the data
+## Load the data
+We will download the source files from the URLs provided, read the CSV files and cleaning data as we read it in, excluding NAs and zero values.
 
-```{r, echo=FALSE}
+```{r}
 ## Download and load the data, cleaning up the data during load
 download.file(trainurl, "./train.csv", method = "curl")
 download.file(testurl, "./test.csv", method = "curl")
@@ -28,8 +32,9 @@ test <- read.csv("./test.csv", na.strings = c("", "NA", "#DIV/0!"))
 
 ```
 
-Now build our model
-Create a training and test dataset from our source training data
+## Now build our model
+Partition our source training data into a training and test dataset.  I am partitioning the data as 70% training and the remaining 30% as test.
+
 ```{r}
 ## First create the training set
 table(train$classe)
@@ -39,7 +44,9 @@ training <- train[inTrain,]
 testing <- train[-inTrain,]
 ```
 
-Let's remove features not likely to contribute to the accuracy of our model
+## Further refine the training data
+
+Initial analysis of the data showed that there are features which are not likely to contribute to the accuracy of the model.  I am using the nearZeroVar() function to remove these features from our training set.
 ```{r}
 ## Now remove features that are not likely to contribute to the model using the nearZeroVar function
 nsv <- nearZeroVar(training)
@@ -48,27 +55,59 @@ training <- select(training, -(X:num_window))
 training<-training[,colSums(is.na(training))/nrow(training) < 0.50]
 ```
 
-Train the model using randomForest
+## Training the model
+I am using randomForest to train the model, providing these benefits
+
+- Accuracy
+
+- Runs efficiently on large data bases
+
+- Handles thousands of input variables without variable deletion
+
+- Gives estimates of what variables are important in the classification
+
+- Generates an internal unbiased estimate of the generalization error as the forest building progresses
+
+- Provides effective methods for estimating missing data
+
+- Maintains accuracy when a large proportion of the data are missing
+
+- Provides methods for balancing error in class population unbalanced data sets
+
+- Generated forests can be saved for future use on other data
+
+- Prototypes are computed that give information about the relation between the variables and the classification.
+
+- Computes proximities between pairs of cases that can be used in clustering, locating outliers, or (by scaling) give interesting views of the data
+
+- Capabilities of the above can be extended to unlabeled data, leading to unsupervised clustering, data views and outlier detection
+
+- Offers an experimental method for detecting variable interactions
+
 ```{r}
 ## Train the model using Random Forest
 RFmodel <- randomForest(classe~., data = training, method = "class")
 ```
 
-Use cross validation on our trained  model to determine the accuracy.
+## Use cross validation on our trained  model to determine the accuracy.
 ```{r}
 ## Cross validate the model to determine accuracy
 myPredict <- predict(RFmodel, testing, type = "class")
 confusionMatrix(myPredict, testing$classe)
 ```
+Based on the cross validation performed, the model has an accuracy of 99.54% with confidence intervals (0.9933, 0.997).  I feel this is a very high accuracy rate and based on that accuracy, one would expect an out of sample error rate of 0.46% (calulated as 1 - .9954 = 0.0046).
 
-Run predictions against the source test set
+## Run predictions against the source test set
+
+The following uses the model I derived against the source test set and displays the results for 20 tests.
 ```{r}
 ## Run our predictions for the supplied test set
 pResults <- predict(RFmodel, test, type = "class")
 pResults
 ```
 
-Finally, write out our predictions for submission.  The source file had 20 test sets so we will be writing out 20 files
+## Submit results
+Finally, write out our predictions for submission.  The source file had 20 test sets so we will be writing out 20 files.  These files are available in the GitHub repo.
 ```{r, eval=FALSE }
 ## Write out our prediction files for submission
 n = length(pResults)
@@ -78,4 +117,4 @@ for(i in 1:n){
     }
 ```
 
-Summary will go here
+

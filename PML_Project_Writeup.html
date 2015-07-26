@@ -68,35 +68,30 @@ img {
 </div>
 
 
-<p>Some initial setup for the analysis and prediction</p>
+<div id="background" class="section level1">
+<h1>Background</h1>
+<p>Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: <a href="http://groupware.les.inf.puc-rio.br/har" class="uri">http://groupware.les.inf.puc-rio.br/har</a> (see the section on the Weight Lifting Exercise Dataset).</p>
+<div id="some-initial-setup-for-the-analysis-and-prediction" class="section level2">
+<h2>Some initial setup for the analysis and prediction</h2>
 <pre class="r"><code>## Setup 
-library(caret)</code></pre>
-<pre><code>## Loading required package: lattice
-## Loading required package: ggplot2</code></pre>
-<pre class="r"><code>library(dplyr)</code></pre>
-<pre><code>## 
-## Attaching package: 'dplyr'
-## 
-## The following object is masked from 'package:stats':
-## 
-##     filter
-## 
-## The following objects are masked from 'package:base':
-## 
-##     intersect, setdiff, setequal, union</code></pre>
-<pre class="r"><code>library(randomForest)</code></pre>
-<pre><code>## randomForest 4.6-10
-## Type rfNews() to see new features/changes/bug fixes.
-## 
-## Attaching package: 'randomForest'
-## 
-## The following object is masked from 'package:dplyr':
-## 
-##     combine</code></pre>
-<pre class="r"><code>trainurl &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv&quot;
+library(caret)
+library(dplyr)
+library(randomForest)
+trainurl &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv&quot;
 testurl &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv&quot;</code></pre>
-<p>Load the data</p>
-<p>Now build our model Create a training and test dataset from our source training data</p>
+</div>
+<div id="load-the-data" class="section level2">
+<h2>Load the data</h2>
+<p>We will download the source files from the URLs provided, read the CSV files and cleaning data as we read it in, excluding NAs and zero values.</p>
+<pre class="r"><code>## Download and load the data, cleaning up the data during load
+download.file(trainurl, &quot;./train.csv&quot;, method = &quot;curl&quot;)
+download.file(testurl, &quot;./test.csv&quot;, method = &quot;curl&quot;)
+train &lt;- read.csv(&quot;./train.csv&quot;, na.strings = c(&quot;&quot;, &quot;NA&quot;, &quot;#DIV/0!&quot;))
+test &lt;- read.csv(&quot;./test.csv&quot;, na.strings = c(&quot;&quot;, &quot;NA&quot;, &quot;#DIV/0!&quot;))  </code></pre>
+</div>
+<div id="now-build-our-model" class="section level2">
+<h2>Now build our model</h2>
+<p>Partition our source training data into a training and test dataset. I am partitioning the data as 70% training and the remaining 30% as test.</p>
 <pre class="r"><code>## First create the training set
 table(train$classe)</code></pre>
 <pre><code>## 
@@ -106,16 +101,39 @@ table(train$classe)</code></pre>
 inTrain &lt;- createDataPartition(train$classe, p = 0.7, list = FALSE)
 training &lt;- train[inTrain,]
 testing &lt;- train[-inTrain,]</code></pre>
-<p>Let’s remove features not likely to contribute to the accuracy of our model</p>
+</div>
+<div id="further-refine-the-training-data" class="section level2">
+<h2>Further refine the training data</h2>
+<p>Initial analysis of the data showed that there are features which are not likely to contribute to the accuracy of the model. I am using the nearZeroVar() function to remove these features from our training set.</p>
 <pre class="r"><code>## Now remove features that are not likely to contribute to the model using the nearZeroVar function
 nsv &lt;- nearZeroVar(training)
 training &lt;- training[, -nsv]
 training &lt;- select(training, -(X:num_window))
 training&lt;-training[,colSums(is.na(training))/nrow(training) &lt; 0.50]</code></pre>
-<p>Train the model using randomForest</p>
+</div>
+<div id="training-the-model" class="section level2">
+<h2>Training the model</h2>
+<p>I am using randomForest to train the model, providing these benefits</p>
+<ul>
+<li><p>Accuracy</p></li>
+<li><p>Runs efficiently on large data bases</p></li>
+<li><p>Handles thousands of input variables without variable deletion</p></li>
+<li><p>Gives estimates of what variables are important in the classification</p></li>
+<li><p>Generates an internal unbiased estimate of the generalization error as the forest building progresses</p></li>
+<li><p>Provides effective methods for estimating missing data</p></li>
+<li><p>Maintains accuracy when a large proportion of the data are missing</p></li>
+<li><p>Provides methods for balancing error in class population unbalanced data sets</p></li>
+<li><p>Generated forests can be saved for future use on other data</p></li>
+<li><p>Prototypes are computed that give information about the relation between the variables and the classification.</p></li>
+<li><p>Computes proximities between pairs of cases that can be used in clustering, locating outliers, or (by scaling) give interesting views of the data</p></li>
+<li><p>Capabilities of the above can be extended to unlabeled data, leading to unsupervised clustering, data views and outlier detection</p></li>
+<li><p>Offers an experimental method for detecting variable interactions</p></li>
+</ul>
 <pre class="r"><code>## Train the model using Random Forest
 RFmodel &lt;- randomForest(classe~., data = training, method = &quot;class&quot;)</code></pre>
-<p>Use cross validation on our trained model to determine the accuracy.</p>
+</div>
+<div id="use-cross-validation-on-our-trained-model-to-determine-the-accuracy." class="section level2">
+<h2>Use cross validation on our trained model to determine the accuracy.</h2>
 <pre class="r"><code>## Cross validate the model to determine accuracy
 myPredict &lt;- predict(RFmodel, testing, type = &quot;class&quot;)
 confusionMatrix(myPredict, testing$classe)</code></pre>
@@ -150,21 +168,29 @@ confusionMatrix(myPredict, testing$classe)</code></pre>
 ## Detection Rate         0.2845   0.1918   0.1735   0.1621   0.1835
 ## Detection Prevalence   0.2856   0.1927   0.1757   0.1623   0.1837
 ## Balanced Accuracy      0.9992   0.9951   0.9962   0.9947   0.9990</code></pre>
-<p>Run predictions against the source test set</p>
+<p>Based on the cross validation performed, the model has an accuracy of 99.54% with confidence intervals (0.9933, 0.997). I feel this is a very high accuracy rate and based on that accuracy, one would expect an out of sample error rate of 0.46% (calulated as 1 - .9954 = 0.0046).</p>
+</div>
+<div id="run-predictions-against-the-source-test-set" class="section level2">
+<h2>Run predictions against the source test set</h2>
+<p>The following uses the model I derived against the source test set and displays the results for 20 tests.</p>
 <pre class="r"><code>## Run our predictions for the supplied test set
 pResults &lt;- predict(RFmodel, test, type = &quot;class&quot;)
 pResults</code></pre>
 <pre><code>##  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 
 ##  B  A  B  A  A  E  D  B  A  A  B  C  B  A  E  E  A  B  B  B 
 ## Levels: A B C D E</code></pre>
-<p>Finally, write out our predictions for submission. The source file had 20 test sets so we will be writing out 20 files</p>
+</div>
+<div id="submit-results" class="section level2">
+<h2>Submit results</h2>
+<p>Finally, write out our predictions for submission. The source file had 20 test sets so we will be writing out 20 files. These files are available in the GitHub repo.</p>
 <pre class="r"><code>## Write out our prediction files for submission
 n = length(pResults)
 for(i in 1:n){
     filename = paste0(&quot;problem_id_&quot;,i,&quot;.txt&quot;)
     write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
     }</code></pre>
-<p>Summary will go here</p>
+</div>
+</div>
 
 
 </div>
