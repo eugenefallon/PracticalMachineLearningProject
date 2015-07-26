@@ -1,0 +1,81 @@
+---
+title: "Practical Machine Learning Project Writeup"
+author: "Eugene Fallon"
+date: "July 26, 2015"
+output: html_document
+---
+
+Some initial setup for the analysis and prediction
+
+```{r}
+## Setup 
+library(caret)
+library(dplyr)
+library(randomForest)
+trainurl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testurl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+```
+
+Load the data
+
+```{r, echo=FALSE}
+## Download and load the data, cleaning up the data during load
+download.file(trainurl, "./train.csv", method = "curl")
+download.file(testurl, "./test.csv", method = "curl")
+train <- read.csv("./train.csv", na.strings = c("", "NA", "#DIV/0!"))
+test <- read.csv("./test.csv", na.strings = c("", "NA", "#DIV/0!"))  
+
+```
+
+Now build our model
+Create a training and test dataset from our source training data
+```{r}
+## First create the training set
+table(train$classe)
+set.seed(999)
+inTrain <- createDataPartition(train$classe, p = 0.7, list = FALSE)
+training <- train[inTrain,]
+testing <- train[-inTrain,]
+```
+
+Let's remove features not likely to contribute to the accuracy of our model
+```{r}
+## Now remove features that are not likely to contribute to the model using the nearZeroVar function
+nsv <- nearZeroVar(training)
+training <- training[, -nsv]
+training <- select(training, -(X:num_window))
+training<-training[,colSums(is.na(training))/nrow(training) < 0.50]
+```
+
+Train the model using randomForest
+```{r}
+## Train the model using Random Forest
+RFmodel <- randomForest(classe~., data = training, method = "class")
+```
+
+Use cross validation on our trained  model to determine the accuracy.
+```{r}
+## Cross validate the model to determine accuracy
+myPredict <- predict(RFmodel, testing, type = "class")
+confusionMatrix(myPredict, testing$classe)
+```
+
+Run predictions against the source test set
+```{r}
+## Run our predictions for the supplied test set
+pResults <- predict(RFmodel, test, type = "class")
+pResults
+```
+
+Finally, write out our predictions for submission.  The source file had 20 test sets so we will be writing out 20 files
+```{r, eval=FALSE }
+## Write out our prediction files for submission
+n = length(pResults)
+for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+    }
+```
+
+Summary will go here
